@@ -125,8 +125,13 @@ func main() {
 func labelizeName(pkgName, typeName string) (string, bool) {
 	isPointer := strings.Contains(typeName, "*")
 	label := strings.Replace(typeName, "*", "", -1) // remove pointers, handle them separately by returning bool
-	label = strings.Replace(label, "/", "_SLASH_", -1)
-	label = strings.Replace(label, "[]", "_ARY_", -1)
+	label = strings.Replace(label, "/", "SLASH", -1)
+	label = strings.Replace(label, "[]", "ARY", -1)
+	label = strings.Replace(label, "{}", "BRACES", -1)
+	label = strings.Replace(label, ",", "COMMA", -1)
+	label = strings.Replace(label, "(", "LPARENS", -1)
+	label = strings.Replace(label, ")", "RPARENS", -1)
+	label = strings.Replace(label, " ", "", -1)
 	// If the type is from another package, don't prepend this package's name to it
 	if strings.Contains(label, ".") {
 		// TODO: handle cases when it's in another package
@@ -148,6 +153,8 @@ func printNamedType(obj types.Object, posn token.Position, importedPkg string, i
 	case *types.Pointer:
 		return printPointer(obj, namedTypeType, importedPkg, posn, indentLevel)
 	// TODO: arrays, etc.
+	case *types.Signature:
+		return printSignature(obj, namedTypeType, importedPkg, indentLevel)
 	default:
 		return "UNKNOWN"
 	}
@@ -157,11 +164,19 @@ func printBasic(obj types.Object, importedPkg string, indentLevel int) string {
 	typeString := obj.Type().String()
 	typeId, _ := labelizeName("main", typeString)
 
-	fmt.Printf("%s%v [shape=record, label=\"%v\"]\n", strings.Repeat("  ", indentLevel), typeId, typeString) // s.Type().Underlying() FOONODE [shape=record, label="{{FOONODE|5}|11}"];
+	fmt.Printf("%s%v [shape=record, label=\"%v\"];\n", strings.Repeat("  ", indentLevel), typeId, typeString) // s.Type().Underlying() FOONODE [shape=record, label="{{FOONODE|5}|11}"];
 
 	return typeId
 }
 
+func printSignature(obj types.Object, s *types.Signature, importedPkg string, indentLevel int) string {
+	typeString := obj.Type().String()
+	typeId, _ := labelizeName("main", typeString)
+
+	fmt.Printf("%s%v [shape=record, label=\"function\", color=\"gray\"]\n", strings.Repeat("  ", indentLevel), typeId) //, typeString, sig) // s.Type().Underlying() FOONODE [shape=record, label="{{FOONODE|5}|11}"];
+
+	return typeId
+}
 func printPointer(obj types.Object, p *types.Pointer, importedPkg string, posn token.Position, indentLevel int) string {
 	pointerType := p.Elem()
 	pPkgName, _ := obj.Pkg().Name(), obj.Name()
@@ -199,10 +214,9 @@ func printInterface(obj types.Object, i *types.Interface, importedPkg string, po
 	fileAndPosn := pathAry[len(pathAry)-1]
 
 	fmt.Printf(
-		"%s%v [shape=record, label=\"{{%v|interface}|%v}\", color=%v]\n",
+		"%s%v [shape=record, label=\"{{interface}|%v}\", color=%v]\n",
 		strings.Repeat("  ", indentLevel),
 		typeId,
-		iName,
 		fileAndPosn,
 		"red",
 	)
