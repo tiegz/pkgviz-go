@@ -26,7 +26,6 @@ type GoListResult struct {
 	ImportPath string
 	GoFiles    []string
 	Imports    []string
-	// ...
 }
 
 func listGoFilesInPackage(pkg string) GoListResult {
@@ -152,10 +151,20 @@ func printNamedType(obj types.Object, posn token.Position, importedPkg string, i
 		return printInterface(obj, namedTypeType, importedPkg, posn, indentLevel)
 	case *types.Pointer:
 		return printPointer(obj, namedTypeType, importedPkg, posn, indentLevel)
-	// TODO: arrays, etc.
 	case *types.Signature:
 		return printSignature(obj, namedTypeType, importedPkg, indentLevel)
+	case *types.Chan:
+		return printChan(obj, namedTypeType, importedPkg, indentLevel)
+	case *types.Slice:
+		return printSlice(obj, namedTypeType, importedPkg, indentLevel)
+	case *types.Map:
+		return printMap(obj, namedTypeType, importedPkg, indentLevel)
 	default:
+		fmt.Printf(
+			"    // Unkonwn: %v <%T> - %v <%T>\n",
+			obj, obj,
+			namedTypeType, namedTypeType,
+		)
 		return "UNKNOWN"
 	}
 }
@@ -164,7 +173,52 @@ func printBasic(obj types.Object, importedPkg string, indentLevel int) string {
 	typeString := obj.Type().String()
 	typeId, _ := labelizeName("main", typeString)
 
-	fmt.Printf("%s%v [shape=record, label=\"%v\"];\n", strings.Repeat("  ", indentLevel), typeId, typeString) // s.Type().Underlying() FOONODE [shape=record, label="{{FOONODE|5}|11}"];
+	fmt.Printf("%s%v [shape=record, label=\"%v\"];\n", strings.Repeat("  ", indentLevel), typeId, typeString)
+
+	return typeId
+}
+
+func printChan(obj types.Object, c *types.Chan, importedPkg string, indentLevel int) string {
+	chanType := c.Elem()
+	cPkgName, _ := obj.Pkg().Name(), obj.Name()
+	typeName := strings.Join([]string{"chan", chanType.String()}, "_")
+	typeId, _ := labelizeName(cPkgName, typeName)
+
+	fmt.Printf("%s%v [shape=record, label=\"chan %s\", color=\"gray\"]\n", strings.Repeat("  ", indentLevel), typeId, chanType.String())
+
+	return typeId
+}
+
+func printSlice(obj types.Object, s *types.Slice, importedPkg string, indentLevel int) string {
+	sliceType := s.Elem()
+	sPkgName, _ := obj.Pkg().Name(), obj.Name()
+	typeName := strings.Join([]string{"chan", sliceType.String()}, "_")
+	typeId, _ := labelizeName(sPkgName, typeName)
+
+	fmt.Printf(
+		"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
+		strings.Repeat("  ", indentLevel),
+		typeId,
+		s,
+	)
+
+	return typeId
+}
+
+
+func printMap(obj types.Object, m *types.Map, importedPkg string, indentLevel int) string {
+	mapType := m.Elem()
+	mPkgName, _ := obj.Pkg().Name(), obj.Name()
+	typeName := strings.Join([]string{"chan", mapType.String()}, "_")
+	typeId, _ := labelizeName(mPkgName, typeName)
+
+	// TODO: break down the map more and point each level to its type?
+	fmt.Printf(
+		"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
+		strings.Repeat("  ", indentLevel),
+		typeId,
+		m,
+	)
 
 	return typeId
 }
@@ -173,14 +227,24 @@ func printSignature(obj types.Object, s *types.Signature, importedPkg string, in
 	typeString := obj.Type().String()
 	typeId, _ := labelizeName("main", typeString)
 
-	fmt.Printf("%s%v [shape=record, label=\"function\", color=\"gray\"]\n", strings.Repeat("  ", indentLevel), typeId) //, typeString, sig) // s.Type().Underlying() FOONODE [shape=record, label="{{FOONODE|5}|11}"];
+	fmt.Printf(
+		"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
+		strings.Repeat("  ", indentLevel),
+		typeId,
+		// TODO: how can we escape in the label instead of removing {}?
+		strings.Replace(strings.Replace(typeString, "{", "", -1), "}", "", -1),
+	)
 
 	return typeId
 }
+
 func printPointer(obj types.Object, p *types.Pointer, importedPkg string, posn token.Position, indentLevel int) string {
 	pointerType := p.Elem()
 	pPkgName, _ := obj.Pkg().Name(), obj.Name()
 	typeId, _ := labelizeName(pPkgName, pointerType.String())
+
+	// TODO finish? make sure it looks like a pointer
+	// fmt.Printf("%s%v [shape=record, label=\"pointer\", color=\"gray\"]\n", strings.Repeat("  ", indentLevel), typeId)
 
 	return typeId
 }
