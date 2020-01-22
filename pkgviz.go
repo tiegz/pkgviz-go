@@ -143,10 +143,10 @@ func labelizeName(pkgName, typeName string) (string, bool) {
 
 func printNamedType(obj types.Object, posn token.Position, importedPkg string, indentLevel int) string {
 	switch namedTypeType := obj.Type().Underlying().(type) {
+	case *types.Basic:
+		return printBasic(obj, namedTypeType, importedPkg, indentLevel)
 	case *types.Struct:
 		return printStruct(obj, namedTypeType, importedPkg, posn, indentLevel)
-	case *types.Basic:
-		return printBasic(obj, importedPkg, indentLevel)
 	case *types.Interface:
 		return printInterface(obj, namedTypeType, importedPkg, posn, indentLevel)
 	case *types.Pointer:
@@ -169,11 +169,11 @@ func printNamedType(obj types.Object, posn token.Position, importedPkg string, i
 	}
 }
 
-func printBasic(obj types.Object, importedPkg string, indentLevel int) string {
+func printBasic(obj types.Object, b *types.Basic, importedPkg string, indentLevel int) string {
 	typeString := obj.Type().String()
 	typeId, _ := labelizeName("main", typeString)
 
-	fmt.Printf("%s%v [shape=record, label=\"%v\"];\n", strings.Repeat("  ", indentLevel), typeId, typeString)
+	fmt.Printf("%s%v [shape=record, label=\"%v (%s)\"];\n", strings.Repeat("  ", indentLevel), typeId, typeString, b)
 
 	return typeId
 }
