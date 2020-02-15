@@ -1,5 +1,3 @@
-
-
 // command line:
 // go build pkgviz.go && ./pkgviz time | tee > foo.dot && dot -Tpng foo.dot -o foo.png && open foo.png
 
@@ -40,8 +38,8 @@ func main() {
 
 	fmt.Printf("digraph V {\n")
 	fmt.Printf("  graph [label=< <br/><b>%s</b> >, labelloc=b, fontsize=10 fontname=Arial];\n", args[0])
-	fmt.Printf("  node [fontname=Arial];\n");
-	fmt.Printf("  edge [fontname=Arial];\n");
+	fmt.Printf("  node [fontname=Arial];\n")
+	fmt.Printf("  edge [fontname=Arial];\n")
 	recursivelyFetchPackageFiles(args[0], 1)
 	fmt.Println("}")
 }
@@ -91,7 +89,7 @@ func recursivelyFetchPackageFiles(importedPkg string, indentLevel int) {
 func printNamedTypesFromTypeChecker(importedPkg string, fset *token.FileSet, files []*ast.File, indentLevel int) {
 	// Type-check the package. Setup the maps that Check will fill.
 	info := types.Info{
-		Defs:   make(map[*ast.Ident]types.Object),
+		Defs: make(map[*ast.Ident]types.Object),
 	}
 
 	var conf types.Config = types.Config{
@@ -111,12 +109,11 @@ func printNamedTypesFromTypeChecker(importedPkg string, fset *token.FileSet, fil
 	// Print out all the Named types
 	for id, obj := range info.Defs {
 		if _, ok := obj.(*types.TypeName); ok {
-			// fmt.Printf("Debugging type %v:\n  Of type: %T\n  Id: %v\n  Name: %v\n  String: %v\n  Type: %v\n  Underlying Type: %v\n  Pos: %v\n  Pkg: %v\n", id, typeName, typeName.Id(), typeName.Name(), typeName.String(), typeName.Type(), typeName.Type().Underlying(), lineCol, typeName.Pkg())
 			printType(obj, fset.Position(id.Pos()), importedPkg, indentLevel)
 		}
 	}
 
-	// Print out all the links between Named types
+	// Print out all the links among Named types
 	for id, obj := range info.Defs {
 		if _, ok := obj.(*types.TypeName); ok {
 			printTypeLinks(obj, fset.Position(id.Pos()), importedPkg, indentLevel)
@@ -155,7 +152,7 @@ func printTypeLinks(obj types.Object, posn token.Position, importedPkg string, i
 
 func printType(obj types.Object, posn token.Position, importedPkg string, indentLevel int) {
 	// Only print named types
-	if (reflect.TypeOf(obj.Type()).String() != "*types.Named") {
+	if reflect.TypeOf(obj.Type()).String() != "*types.Named" {
 		return
 	}
 
@@ -185,51 +182,16 @@ func printType(obj types.Object, posn token.Position, importedPkg string, indent
 	}
 }
 
-func getTypeId(obj types.Object) string {
-	var typeId, typePkgName, typeName string
-
-
-	switch namedTypeType := obj.Type().Underlying().(type) {
-	case *types.Basic:
-		typePkgName, typeName = "main", obj.Type().String()
-	case *types.Chan:
-		containerType := namedTypeType.Elem()
-		typePkgName = obj.Pkg().Name()
-		typeName = strings.Join([]string{"chan", containerType.String()}, "_")
-	case *types.Slice:
-		sliceType := namedTypeType.Elem()
-		typePkgName, typeName = obj.Pkg().Name(), strings.Join([]string{"slice", sliceType.String()}, "_")
-	case *types.Struct:
-		typePkgName, typeName = obj.Pkg().Name(), obj.Name()
-	case *types.Interface:
-		typePkgName, typeName = obj.Pkg().Name(), obj.Type().String()
-		typeId = labelizeName(typePkgName, typeName)
-	case *types.Pointer:
-		pointerType := namedTypeType.Elem()
-		typePkgName = obj.Pkg().Name()
-		typeName = pointerType.String()
-	case *types.Signature:
-		typePkgName, typeName = "main", obj.Type().String()
-	case *types.Map:
-		mapType := namedTypeType.Elem()
-		typePkgName, typeName = obj.Pkg().Name(), strings.Join([]string{"chan", mapType.String()}, "_")
-	}
-
-	typeId = labelizeName(typePkgName, typeName)
-
-	return typeId
-}
-
 func printBasic(obj types.Object, b *types.Basic, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj)
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 	typeString := obj.Type().String()
 
 	fmt.Printf(
-		`%s%v [shape=plaintext label=< ` +
-		`<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>` +
-		`<tr><td bgcolor='#e0ebf5' align='center'>&nbsp;&nbsp;%v&nbsp;&nbsp;</td></tr>` +
-		`<tr><td align='center'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td></tr>` +
-		`</table> >];
+		`%s%v [shape=plaintext label=< `+
+			`<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>`+
+			`<tr><td bgcolor='#e0ebf5' align='center'>&nbsp;&nbsp;%v&nbsp;&nbsp;</td></tr>`+
+			`<tr><td align='center'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td></tr>`+
+			`</table> >];
 		`,
 		strings.Repeat("  ", indentLevel),
 		typeId,
@@ -239,14 +201,14 @@ func printBasic(obj types.Object, b *types.Basic, importedPkg string, indentLeve
 }
 
 func printChan(obj types.Object, c *types.Chan, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj)
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 	chanType := c.Elem()
 
 	fmt.Printf("%s%v [shape=record, label=\"chan %s\", color=\"gray\"];\n", strings.Repeat("  ", indentLevel), typeId, chanType.String())
 }
 
 func printSlice(obj types.Object, s *types.Slice, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj)
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 
 	fmt.Printf(
 		"%s%v [shape=record, label=\"%s\", color=\"gray\"];\n",
@@ -256,9 +218,8 @@ func printSlice(obj types.Object, s *types.Slice, importedPkg string, indentLeve
 	)
 }
 
-
 func printMap(obj types.Object, m *types.Map, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj)
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 
 	// TODO: break down the map more and point each level to its type?
 	fmt.Printf(
@@ -270,7 +231,7 @@ func printMap(obj types.Object, m *types.Map, importedPkg string, indentLevel in
 }
 
 func printSignature(obj types.Object, s *types.Signature, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj)
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 	typeString := obj.Type().String()
 
 	fmt.Printf(
@@ -288,8 +249,7 @@ func printPointer(obj types.Object, p *types.Pointer, importedPkg string, posn t
 }
 
 func printStruct(obj types.Object, ss *types.Struct, importedPkg string, posn token.Position, indentLevel int) {
-	typeId := getTypeId(obj)
-	// sPkgName := obj.Pkg().Name()
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 	sName := obj.Name()
 
 	pathAry := strings.Split(posn.String(), importedPkg)
@@ -300,13 +260,6 @@ func printStruct(obj types.Object, ss *types.Struct, importedPkg string, posn to
 	} else {
 		fileAndPosn = ""
 	}
-
-	// fmt.Printf("%s%v [shape=record, label=\"{{%v|struct}|%v}\", color=%v]\n", strings.Repeat("  ", indentLevel), typeId, sName, fileAndPosn, "orange")
-	// for i := 0; i < ss.NumFields(); i++ {
-	// 	f := ss.Field(i)
-	// 	toTypeId := printNamedType(f, posn, importedPkg, indentLevel)
-	// 	fmt.Printf("%s%v -> %v [label=\"%v\"];\n", strings.Repeat("  ", indentLevel), typeId, toTypeId, f.Name())
-	// }
 
 	structLabel := fmt.Sprintf(
 		`%s%v [shape=plaintext label=<
@@ -321,10 +274,7 @@ func printStruct(obj types.Object, ss *types.Struct, importedPkg string, posn to
 	for i := 0; i < ss.NumFields(); i++ {
 		f := ss.Field(i)
 		printType(f, posn, importedPkg, indentLevel)
-		fTypeId := getTypeId(f)
-		if f.Name() == "r" || f.Name() == "field r runtimeTimer" {
-			fmt.Printf("Foobar %v: %v, %v <%T> == %v\n", typeId, f.Name(), f, f, toTypeId)
-		}
+		fTypeId := getTypeId(f.Type(), f.Pkg().Name())
 		structLabel = fmt.Sprintf(
 			"%s%s<tr><td port='port_%s' align='left'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td><td align='left'><font color='#7f8183'>&nbsp;&nbsp;%s&nbsp;&nbsp;</font></td></tr>\n",
 			structLabel,
@@ -344,33 +294,34 @@ func printStruct(obj types.Object, ss *types.Struct, importedPkg string, posn to
 }
 
 func printStructLinks(obj types.Object, ss *types.Struct, importedPkg string, posn token.Position, indentLevel int) {
-	typeId := getTypeId(obj)
+	structTypeId := getTypeId(obj.Type(), obj.Pkg().Name())
 
 	// TODO: move this into the printTypeLinks() func
 	for i := 0; i < ss.NumFields(); i++ {
 		f := ss.Field(i)
-		toTypeId := getTypeId(f)
-		fType := reflect.TypeOf(f.Type()).String()
+		fieldId := getTypeId(f.Type(), f.Pkg().Name())
+		fTypeType := reflect.TypeOf(f.Type()).String()
 
-		// Don't link to basic types or containers of basic types.
-		isSignature := fType == "*types.Signature"
-		isBasic := fType == "*types.Basic"
-		// HACK: better way to do this, e.g. chedcking NumExplicitMethods > 0?
-		isEmptyInterface := toTypeId == "time_interfacebraces"
-		isContainerOfBasic := containerElemIsBasic(f.Type())
-
+		toTypeId := fieldId
 		// Link to underlying type instead of slice-of-underlying type
 		if containerType := getContainerType(f.Type()); containerType != nil {
 			// TODO: importedPkg may be wrong here, it could be another package. How to fix?
 			toTypeId = labelizeName(importedPkg, containerType.String())
 		}
 
-		if (!isEmptyInterface && !isSignature && !isBasic && !isContainerOfBasic) {
+		// Don't link to basic types or containers of basic types.
+		isSignature := fTypeType == "*types.Signature"
+		isBasic := fTypeType == "*types.Basic"
+		// HACK: better way to do this, e.g. chedcking NumExplicitMethods > 0?
+		isEmptyInterface := fieldId == "time_interfacebraces"
+		isContainerOfBasic := containerElemIsBasic(f.Type())
+
+		if !isEmptyInterface && !isSignature && !isBasic && !isContainerOfBasic {
 			fmt.Printf(
 				"%s%s:port_%s -> %s;\n",
 				strings.Repeat("  ", indentLevel),
-				typeId,
-				toTypeId,
+				structTypeId,
+				fieldId,
 				toTypeId,
 			)
 		}
@@ -378,7 +329,7 @@ func printStructLinks(obj types.Object, ss *types.Struct, importedPkg string, po
 }
 
 func printInterface(obj types.Object, i *types.Interface, importedPkg string, posn token.Position, indentLevel int) {
-	typeId := getTypeId(obj)
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 	if i.NumExplicitMethods() > 0 {
 		interfaceLabel := fmt.Sprintf(
 			`%s%v [shape=plaintext label=<
@@ -387,7 +338,7 @@ func printInterface(obj types.Object, i *types.Interface, importedPkg string, po
 			`,
 			strings.Repeat("  ", indentLevel),
 			typeId,
-			i.NumExplicitMethods() + 1,
+			i.NumExplicitMethods()+1,
 			obj.Name(),
 		)
 
@@ -427,12 +378,14 @@ func getTypeAssertion(t types.Type) types.Type {
 func getContainerType(t types.Type) types.Type {
 	var containerType types.Type
 	switch typeType := t.(type) {
+	case *types.Array:
+		containerType = getTypeAssertion(typeType.Elem())
+	case *types.Map:
+		containerType = getTypeAssertion(typeType.Elem())
 	case *types.Chan:
+		containerType = getTypeAssertion(typeType.Elem())
 	case *types.Slice:
-		switch containerTypeType := typeType.Elem().(type) {
-		default:
-			containerType = containerTypeType
-		}
+		containerType = getTypeAssertion(typeType.Elem())
 	}
 	return containerType
 }
@@ -441,9 +394,26 @@ func getContainerType(t types.Type) types.Type {
 func containerElemIsBasic(t types.Type) bool {
 	switch typeType := t.(type) {
 	case *types.Slice:
+		switch typeType.Elem().(type) {
+		case *types.Basic:
+			return true
+		default:
+			return false
+		}
 	case *types.Chan:
+		switch typeType.Elem().(type) {
+		case *types.Basic:
+			return true
+		default:
+			return false
+		}
 	case *types.Array:
-	case *types.Signature:
+		switch typeType.Elem().(type) {
+		case *types.Basic:
+			return true
+		default:
+			return false
+		}
 	case *types.Map:
 		switch typeType.Elem().(type) {
 		case *types.Basic:
@@ -455,4 +425,36 @@ func containerElemIsBasic(t types.Type) bool {
 		return false // not actually a slice
 	}
 	return false
+}
+
+func getTypeId(t types.Type, typePkgName string) string {
+	var typeId, typeName string
+
+	switch namedTypeType := t.Underlying().(type) {
+	case *types.Basic:
+		typePkgName, typeName = "main", t.String()
+	case *types.Chan:
+		containerType := namedTypeType.Elem()
+		typeName = strings.Join([]string{"chan", containerType.String()}, "_")
+	case *types.Slice:
+		sliceType := namedTypeType.Elem()
+		typeName = strings.Join([]string{"slice", sliceType.String()}, "_")
+	case *types.Struct:
+		typeName = t.String()
+	case *types.Interface:
+		typeName = t.String()
+		typeId = labelizeName(typePkgName, typeName)
+	case *types.Pointer:
+		pointerType := namedTypeType.Elem()
+		typeName = pointerType.String()
+	case *types.Signature:
+		typePkgName, typeName = "main", t.String()
+	case *types.Map:
+		mapType := namedTypeType.Elem()
+		typeName = strings.Join([]string{"chan", mapType.String()}, "_")
+	}
+
+	typeId = labelizeName(typePkgName, typeName)
+
+	return typeId
 }
