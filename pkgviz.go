@@ -1,11 +1,7 @@
-// command line:
-// go build pkgviz.go && ./pkgviz time | tee > foo.dot && dot -Tpng foo.dot -o foo.png && open foo.png
-
-package main
+package pkgviz
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"go/ast"
 	"go/importer"
@@ -20,51 +16,155 @@ import (
 	"strings"
 )
 
-type GoListResult struct {
+type goListResult struct {
 	Dir        string
 	ImportPath string
 	GoFiles    []string
 	Imports    []string
 }
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
-
-	if len(args) < 1 {
-		log.Fatalln("error: no package name given")
-		return
-	}
-
-	fmt.Printf("digraph V {\n")
-	fmt.Printf("  graph [label=< <br/><b>%s</b> >, labelloc=b, fontsize=10 fontname=Arial];\n", args[0])
-	fmt.Printf("  node [fontname=Arial];\n")
-	fmt.Printf("  edge [fontname=Arial];\n")
-	recursivelyFetchPackageFiles(args[0], 1)
-	fmt.Println("}")
+type dotGraphStructField struct {
+	structFieldName     string
+	structFieldTypeName string
 }
 
-func listGoFilesInPackage(pkg string) GoListResult {
-	var listCmdOut []byte
-	var err error
-	if listCmdOut, err = exec.Command("go", "list", "-json", pkg).Output(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Printf("Debug: %v\n", listCmdOut)
-		os.Exit(1)
-	}
-
-	var data GoListResult
-	if err := json.Unmarshal(listCmdOut, &data); err != nil {
-		panic(err)
-	}
-
-	return data
+type dotGraphNode struct {
+	typeId               string
+	typeType             string
+	typeUnderlyingType   string // e.g. for Basic underlying types, containers, etc
+	typeName             string
+	typeNodes            map[string]*dotGraphNode        // id -> node
+	typeStructFields     map[string]*dotGraphStructField // name -> node (of field type)
+	typeInterfaceMethods map[string]string               // name -> type
+	typeLinks            []string
 }
 
-func recursivelyFetchPackageFiles(importedPkg string, indentLevel int) {
-	pkgLabel := labelizeName("", importedPkg)
-	fmt.Printf("  subgraph pkg%v { \n", pkgLabel)
-	listData := listGoFilesInPackage(importedPkg)
+func WriteGraph(pkgName string) string {
+	dotGraph := BuildGraph(pkgName)
+
+	str := dotGraph.Print("", pkgName, 0)
+	fmt.Printf(str)
+
+	return str
+}
+
+func (dgn *dotGraphNode) Print(out string, pkgName string, indentLevel int) string {
+	//	fmt.Printf("Printing %v\t: %v, %v\n", dgn.typeType, dgn.typeId, dgn.typeName)
+
+	switch dgn.typeType {
+	case "root":
+		out = fmt.Sprintf(`
+digraph V {
+	graph [label=< <br/><b>%s</b> >, labelloc=b, fontsize=10 fontname=Arial];
+	node [fontname=Arial];
+	edge [fontname=Arial];
+
+`,
+			pkgName,
+		)
+		for _, node := range dgn.typeNodes {
+			out = node.Print(out, pkgName, indentLevel+1)
+		}
+		for _, typeLink := range dgn.typeLinks {
+			out = fmt.Sprintf("%s%s", out, typeLink)
+		}
+		out = fmt.Sprintf(`%s}`, out)
+	case "struct":
+		out = fmt.Sprintf(`
+%s%s%s [shape=plaintext label=<
+	<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>
+		<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td></tr>
+`,
+			out,
+			strings.Repeat("	", indentLevel),
+			dgn.typeId,
+			dgn.typeName,
+			// fileAndPosn,
+		)
+		for structFieldId, structFieldNode := range dgn.typeStructFields {
+			// fTypeId := getTypeId(f.Type(), f.Pkg().Name())
+			out = fmt.Sprintf(
+				"%s%s<tr><td port='port_%s' align='left'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td><td align='left'><font color='#7f8183'>&nbsp;&nbsp;%s&nbsp;&nbsp;</font></td></tr>\n",
+				out,
+				strings.Repeat("	", indentLevel+1),
+				structFieldId,
+				structFieldNode.structFieldName,
+				escapeHtml(structFieldNode.structFieldTypeName),
+			)
+		}
+		out = fmt.Sprintf(`%s
+%s</table>
+			>];%s`,
+			out,
+			strings.Repeat("	", indentLevel),
+			"\n",
+		)
+	case "basic":
+		out = fmt.Sprintf(`%s%s%s [shape=plaintext label=< `+
+			`<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>`+
+			`<tr><td bgcolor='#e0ebf5' align='center'>&nbsp;&nbsp;%v&nbsp;&nbsp;</td></tr>`+
+			`<tr><td align='center'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td></tr>`+
+			`</table> >];
+			`,
+			out,
+			strings.Repeat("	", indentLevel),
+			dgn.typeId,
+			dgn.typeName,
+			dgn.typeUnderlyingType,
+		)
+	case "interface":
+		out = fmt.Sprintf(
+			`%s%s%v [shape=plaintext label=<
+				<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>
+					<tr><td bgcolor='#e0ebf5' align='center' colspan='%d'>%s interface</td></tr>
+			`,
+			out,
+			strings.Repeat("	", indentLevel),
+			dgn.typeId,
+			len(dgn.typeInterfaceMethods), // i.NumExplicitMethods()+1,
+			dgn.typeName,
+		)
+		for methodName, methodType := range dgn.typeInterfaceMethods {
+			out = fmt.Sprintf("%s%s<tr><td>%s <font color='#d0dae5'>%s</font></td></tr>\n", out, strings.Repeat("	", indentLevel), methodName, methodType)
+		}
+		out = fmt.Sprintf(`
+			%s</table>
+			>];%s`,
+			out,
+			"\n",
+		)
+		fmt.Print(out)
+	// case "pointer":
+	// case "signature":
+	// case "chan":
+	// case "slice":
+	// case "map":
+	default:
+		panic(dgn.typeType)
+		//fmt.Printf("Unknown %v\n", dgn.typeType)
+	}
+
+	return out
+}
+
+func BuildGraph(pkgName string) *dotGraphNode {
+	root := dotGraphNode{
+		typeId:           "root",
+		typeType:         "root",
+		typeName:         pkgName,
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
+	}
+
+	recursivelyBuildGraph(&root, pkgName)
+
+	return &root
+}
+
+func recursivelyBuildGraph(dg *dotGraphNode, pkgName string) { // , indentLevel int
+	// pkgLabel := labelizeName("", importedPkg)
+	// fmt.Printf("  subgraph pkg%v { \n", pkgLabel)
+	listData := listGoFilesInPackage(pkgName)
 
 	fset := token.NewFileSet()
 	var files []*ast.File
@@ -76,17 +176,35 @@ func recursivelyFetchPackageFiles(importedPkg string, indentLevel int) {
 		}
 		files = append(files, f)
 	}
-	printNamedTypesFromTypeChecker(importedPkg, fset, files, indentLevel+1)
-	fmt.Printf("  }\n")
+	addTypesToGraph(dg, pkgName, fset, files)
 
-	for _, pkg := range listData.Imports {
-		if strings.HasPrefix(pkg, listData.ImportPath) {
-			recursivelyFetchPackageFiles(pkg, indentLevel)
+	for _, importedPkgName := range listData.Imports {
+		if strings.HasPrefix(importedPkgName, listData.ImportPath) {
+			recursivelyBuildGraph(dg, importedPkgName) // indentLevel
 		}
 	}
 }
 
-func printNamedTypesFromTypeChecker(importedPkg string, fset *token.FileSet, files []*ast.File, indentLevel int) {
+func listGoFilesInPackage(pkg string) goListResult {
+	var listCmdOut []byte
+	var err error
+	if listCmdOut, err = exec.Command("go", "list", "-json", pkg).Output(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Printf("Debug: %v\n", listCmdOut)
+		os.Exit(1)
+	}
+
+	var data goListResult
+	if err := json.Unmarshal(listCmdOut, &data); err != nil {
+		fmt.PrintF("Error finding %v\n", pkg)
+		panic(err)
+	}
+
+	return data
+}
+
+// func printNamedTypesFromTypeChecker(importedPkg string, fset *token.FileSet, files []*ast.File, indentLevel int) {
+func addTypesToGraph(dg *dotGraphNode, importedPkg string, fset *token.FileSet, files []*ast.File) {
 	// Type-check the package. Setup the maps that Check will fill.
 	info := types.Info{
 		Defs: make(map[*ast.Ident]types.Object),
@@ -109,14 +227,14 @@ func printNamedTypesFromTypeChecker(importedPkg string, fset *token.FileSet, fil
 	// Print out all the Named types
 	for id, obj := range info.Defs {
 		if _, ok := obj.(*types.TypeName); ok {
-			printType(obj, fset.Position(id.Pos()), importedPkg, indentLevel)
+			addTypeToGraph(dg, obj, fset.Position(id.Pos()), importedPkg)
 		}
 	}
 
 	// Print out all the links among Named types
 	for id, obj := range info.Defs {
 		if _, ok := obj.(*types.TypeName); ok {
-			printTypeLinks(obj, fset.Position(id.Pos()), importedPkg, indentLevel)
+			addTypeLinkToGraph(dg, obj, fset.Position(id.Pos()), importedPkg)
 		}
 	}
 }
@@ -141,16 +259,17 @@ func labelizeName(pkgName, typeName string) string {
 	return strings.ToLower(label)
 }
 
-func printTypeLinks(obj types.Object, posn token.Position, importedPkg string, indentLevel int) {
+func addTypeLinkToGraph(dg *dotGraphNode, obj types.Object, posn token.Position, importedPkg string) {
 	switch namedTypeType := obj.Type().Underlying().(type) {
 	case *types.Struct:
-		printStructLinks(obj, namedTypeType, importedPkg, posn, indentLevel)
+		addStructLinksToGraph(dg, obj, namedTypeType, importedPkg, posn)
 	default:
 		// no-op
 	}
 }
 
-func printType(obj types.Object, posn token.Position, importedPkg string, indentLevel int) {
+func addTypeToGraph(dg *dotGraphNode, obj types.Object, posn token.Position, importedPkg string) { // , indentLevel int
+	// func printType(obj types.Object, posn token.Position, importedPkg string, indentLevel int) {
 	// Only print named types
 	if reflect.TypeOf(obj.Type()).String() != "*types.Named" {
 		return
@@ -158,21 +277,21 @@ func printType(obj types.Object, posn token.Position, importedPkg string, indent
 
 	switch namedTypeType := obj.Type().Underlying().(type) {
 	case *types.Basic:
-		printBasic(obj, namedTypeType, importedPkg, indentLevel)
+		addBasicToGraph(dg, obj, namedTypeType, importedPkg) // , indentLevel)
 	case *types.Interface:
-		printInterface(obj, namedTypeType, importedPkg, posn, indentLevel)
+		addInterfaceToGraph(dg, obj, namedTypeType, importedPkg, posn) // , indentLevel)
 	case *types.Pointer:
-		printPointer(obj, namedTypeType, importedPkg, posn, indentLevel)
+		addPointerToGraph(dg, obj, namedTypeType, importedPkg, posn) // , indentLevel)
 	case *types.Signature:
-		printSignature(obj, namedTypeType, importedPkg, indentLevel)
+		addSignatureToGraph(dg, obj, namedTypeType, importedPkg) // , indentLevel)
 	case *types.Chan:
-		printChan(obj, namedTypeType, importedPkg, indentLevel)
+		addChanToGraph(dg, obj, namedTypeType, importedPkg) // , indentLevel)
 	case *types.Slice:
-		printSlice(obj, namedTypeType, importedPkg, indentLevel)
+		addSliceToGraph(dg, obj, namedTypeType, importedPkg) // , indentLevel)
 	case *types.Map:
-		printMap(obj, namedTypeType, importedPkg, indentLevel)
+		addMapToGraph(dg, obj, namedTypeType, importedPkg) // , indentLevel)
 	case *types.Struct:
-		printStruct(obj, namedTypeType, importedPkg, posn, indentLevel)
+		addStructToGraph(dg, obj, namedTypeType, importedPkg, posn) // , posn, indentLevel)
 	default:
 		fmt.Printf(
 			"    // Unknown: %v <%T> - %v <%T>\n",
@@ -182,118 +301,151 @@ func printType(obj types.Object, posn token.Position, importedPkg string, indent
 	}
 }
 
-func printBasic(obj types.Object, b *types.Basic, importedPkg string, indentLevel int) {
+func addBasicToGraph(dg *dotGraphNode, obj types.Object, b *types.Basic, importedPkg string) { // , indentLevel int) {
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
+
+	// TODO: check key first
+	node := dotGraphNode{
+		typeId:             typeId,
+		typeType:           "basic",
+		typeName:           obj.Type().String(),
+		typeUnderlyingType: b.String(),
+		typeNodes:          map[string]*dotGraphNode{},
+		typeStructFields:   map[string]*dotGraphStructField{},
+	}
+	// fmt.Printf("printBasic: %v ... %v\n", node)
+
+	dg.typeNodes[typeId] = &node
+}
+
+func addChanToGraph(dg *dotGraphNode, obj types.Object, c *types.Chan, importedPkg string) { //, indentLevel int) {
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
+	// chanType := c.Elem()
+
+	dg.typeNodes[typeId] = &dotGraphNode{
+		typeId:           typeId,
+		typeType:         "chan",
+		typeName:         c.Elem().String(),
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
+	}
+	// fmt.Printf(
+	// 	"%s%v [shape=record, label=\"chan %s\", color=\"gray\"];\n",
+	// 	strings.Repeat("	", indentLevel),
+	// 	typeId,
+	// 	chanType.String()
+	// )
+}
+
+func addSliceToGraph(dg *dotGraphNode, obj types.Object, s *types.Slice, importedPkg string) { //, indentLevel int) {
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
+
+	dg.typeNodes[typeId] = &dotGraphNode{
+		typeId:           typeId,
+		typeType:         "slice",
+		typeName:         s.String(),
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
+	}
+
+	// fmt.Printf(
+	// 	"%s%v [shape=record, label=\"%s\", color=\"gray\"];\n",
+	// 	strings.Repeat("	", indentLevel),
+	// 	typeId,
+	// 	s,
+	// )
+}
+
+func addMapToGraph(dg *dotGraphNode, obj types.Object, m *types.Map, importedPkg string) { //, indentLevel int) {
+	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
+
+	dg.typeNodes[typeId] = &dotGraphNode{
+		typeId:           typeId,
+		typeType:         "map",
+		typeName:         m.String(),
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
+	}
+
+	// // TODO: break down the map more and point each level to its type?
+	// fmt.Printf(
+	// 	"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
+	// 	strings.Repeat("	", indentLevel),
+	// 	typeId,
+	// 	m,
+	// )
+}
+
+func addSignatureToGraph(dg *dotGraphNode, obj types.Object, s *types.Signature, importedPkg string) { //, indentLevel int) {
 	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
 	typeString := obj.Type().String()
+	// TODO: how can we escape in the label instead of removing {}?
+	typeString = strings.Replace(strings.Replace(typeString, "{", "", -1), "}", "", -1)
 
-	fmt.Printf(
-		`%s%v [shape=plaintext label=< `+
-			`<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>`+
-			`<tr><td bgcolor='#e0ebf5' align='center'>&nbsp;&nbsp;%v&nbsp;&nbsp;</td></tr>`+
-			`<tr><td align='center'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td></tr>`+
-			`</table> >];
-		`,
-		strings.Repeat("  ", indentLevel),
-		typeId,
-		typeString,
-		b,
-	)
+	dg.typeNodes[typeId] = &dotGraphNode{
+		typeId:           typeId,
+		typeType:         "signature",
+		typeName:         typeString,
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
+	}
+
+	// fmt.Printf(
+	// 	"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
+	// 	strings.Repeat("	", indentLevel),
+	// 	typeId,
+	// 	// TODO: how can we escape in the label instead of removing {}?
+	// 	strings.Replace(strings.Replace(typeString, "{", "", -1), "}", "", -1),
+	// )
 }
 
-func printChan(obj types.Object, c *types.Chan, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
-	chanType := c.Elem()
-
-	fmt.Printf("%s%v [shape=record, label=\"chan %s\", color=\"gray\"];\n", strings.Repeat("  ", indentLevel), typeId, chanType.String())
-}
-
-func printSlice(obj types.Object, s *types.Slice, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
-
-	fmt.Printf(
-		"%s%v [shape=record, label=\"%s\", color=\"gray\"];\n",
-		strings.Repeat("  ", indentLevel),
-		typeId,
-		s,
-	)
-}
-
-func printMap(obj types.Object, m *types.Map, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
-
-	// TODO: break down the map more and point each level to its type?
-	fmt.Printf(
-		"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
-		strings.Repeat("  ", indentLevel),
-		typeId,
-		m,
-	)
-}
-
-func printSignature(obj types.Object, s *types.Signature, importedPkg string, indentLevel int) {
-	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
-	typeString := obj.Type().String()
-
-	fmt.Printf(
-		"%s%v [shape=record, label=\"%s\", color=\"gray\"]\n",
-		strings.Repeat("  ", indentLevel),
-		typeId,
-		// TODO: how can we escape in the label instead of removing {}?
-		strings.Replace(strings.Replace(typeString, "{", "", -1), "}", "", -1),
-	)
-}
-
-func printPointer(obj types.Object, p *types.Pointer, importedPkg string, posn token.Position, indentLevel int) {
+func addPointerToGraph(dg *dotGraphNode, obj types.Object, p *types.Pointer, importedPkg string, posn token.Position) { //, indentLevel int) {
 	// TODO finish? make sure it looks like a pointer
-	// fmt.Printf("%s%v [shape=record, label=\"pointer\", color=\"gray\"]\n", strings.Repeat("  ", indentLevel), typeId)
+	// fmt.Printf("%s%v [shape=record, label=\"pointer\", color=\"gray\"]\n", strings.Repeat("	", indentLevel), typeId)
+	// dg.typeNodes[typeId] = &dotGraphNode{
+	//	typeId: typeId,
+	// 	typeType: "pointer",
+	// 	typeName: p.String(),
+	//  typeNodes: map[string]*dotGraphNode{},
+	// }
 }
 
-func printStruct(obj types.Object, ss *types.Struct, importedPkg string, posn token.Position, indentLevel int) {
+func addStructToGraph(dg *dotGraphNode, obj types.Object, ss *types.Struct, importedPkg string, posn token.Position) { //, indentLevel int) {
 	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
-	sName := obj.Name()
+	// sName := obj.Name()
 
-	pathAry := strings.Split(posn.String(), importedPkg)
-	var fileAndPosn string
-	// TODO: make file location/column an optional flag
-	if false {
-		fileAndPosn = pathAry[len(pathAry)-1]
-	} else {
-		fileAndPosn = ""
+	// TODO: bring back file/line no strings?
+	// pathAry := strings.Split(posn.String(), importedPkg)
+	// var fileAndPosn string
+	// // TODO: make file location/column an optional flag
+	// if false {
+	// 	fileAndPosn = pathAry[len(pathAry)-1]
+	// } else {
+	// 	fileAndPosn = ""
+	// }
+
+	node := dotGraphNode{
+		typeId:           typeId,
+		typeType:         "struct",
+		typeName:         obj.Name(),
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
 	}
 
-	structLabel := fmt.Sprintf(
-		`%s%v [shape=plaintext label=<
-			<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>
-				<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>&nbsp;&nbsp;%s %s&nbsp;&nbsp;</td></tr>
-		`,
-		strings.Repeat("  ", indentLevel),
-		typeId,
-		sName,
-		fileAndPosn,
-	)
 	for i := 0; i < ss.NumFields(); i++ {
-		f := ss.Field(i)
-		printType(f, posn, importedPkg, indentLevel)
-		fTypeId := getTypeId(f.Type(), f.Pkg().Name())
-		structLabel = fmt.Sprintf(
-			"%s%s<tr><td port='port_%s' align='left'>&nbsp;&nbsp;%s&nbsp;&nbsp;</td><td align='left'><font color='#7f8183'>&nbsp;&nbsp;%s&nbsp;&nbsp;</font></td></tr>\n",
-			structLabel,
-			strings.Repeat("  ", indentLevel),
-			fTypeId,
-			f.Name(),
-			escapeHtml(f.Type().String()),
-		)
+		field := ss.Field(i)
+
+		fieldTypeId := getTypeId(field.Type(), field.Pkg().Name())
+		node.typeStructFields[fieldTypeId] = &dotGraphStructField{
+			structFieldName:     field.Name(),
+			structFieldTypeName: escapeHtml(field.Type().String()),
+		}
 	}
-	structLabel = fmt.Sprintf(`
-		%s</table>
-		>];%s`,
-		structLabel,
-		"\n",
-	)
-	fmt.Print(structLabel)
+
+	dg.typeNodes[typeId] = &node
 }
 
-func printStructLinks(obj types.Object, ss *types.Struct, importedPkg string, posn token.Position, indentLevel int) {
+func addStructLinksToGraph(dg *dotGraphNode, obj types.Object, ss *types.Struct, importedPkg string, posn token.Position) { // , indentLevel int
 	structTypeId := getTypeId(obj.Type(), obj.Pkg().Name())
 
 	// TODO: move this into the printTypeLinks() func
@@ -317,49 +469,31 @@ func printStructLinks(obj types.Object, ss *types.Struct, importedPkg string, po
 		isContainerOfBasic := containerElemIsBasic(f.Type())
 
 		if !isEmptyInterface && !isSignature && !isBasic && !isContainerOfBasic {
-			fmt.Printf(
-				"%s%s:port_%s -> %s;\n",
-				strings.Repeat("  ", indentLevel),
-				structTypeId,
-				fieldId,
-				toTypeId,
-			)
+			link := fmt.Sprintf("%s:port_%s -> %s;\n", structTypeId, fieldId, toTypeId)
+			dg.typeLinks = append(dg.typeLinks, link)
 		}
 	}
 }
 
-func printInterface(obj types.Object, i *types.Interface, importedPkg string, posn token.Position, indentLevel int) {
+func addInterfaceToGraph(dg *dotGraphNode, obj types.Object, i *types.Interface, importedPkg string, posn token.Position) { // indentLevel int) {
 	typeId := getTypeId(obj.Type(), obj.Pkg().Name())
-	if i.NumExplicitMethods() > 0 {
-		interfaceLabel := fmt.Sprintf(
-			`%s%v [shape=plaintext label=<
-				<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>
-					<tr><td bgcolor='#e0ebf5' align='center' colspan='%d'>%s interface</td></tr>
-			`,
-			strings.Repeat("  ", indentLevel),
-			typeId,
-			i.NumExplicitMethods()+1,
-			obj.Name(),
-		)
 
+	node := dotGraphNode{
+		typeId:           typeId,
+		typeType:         "interface",
+		typeName:         obj.Name(),
+		typeNodes:        map[string]*dotGraphNode{},
+		typeStructFields: map[string]*dotGraphStructField{},
+	}
+
+	if i.NumExplicitMethods() > 0 {
 		for idx := 0; idx < i.NumExplicitMethods(); idx += 1 {
 			m := i.ExplicitMethod(idx)
-			interfaceLabel = fmt.Sprintf(
-				"%s%s<tr><td>%s <font color='#d0dae5'>%s</font></td></tr>\n",
-				interfaceLabel,
-				strings.Repeat("  ", indentLevel),
-				m.Name(),
-				m.Type(),
-			)
+			dg.typeInterfaceMethods[m.Name()] = m.Type().String()
 		}
-		interfaceLabel = fmt.Sprintf(`
-			%s</table>
-			>];%s`,
-			interfaceLabel,
-			"\n",
-		)
-		fmt.Print(interfaceLabel)
 	}
+
+	dg.typeNodes[typeId] = &node
 }
 
 func escapeHtml(s string) string {
