@@ -1,0 +1,21 @@
+digraph V {
+	graph [label=< <br/><b>../../pkg/fake_pkg/fake_struct_pkg</b> >, labelloc=b, fontsize=10 fontname=Arial];
+	node [fontname=Arial];
+	edge [fontname=Arial];
+	fake_struct_pkg_fakestructa [shape=plaintext label=<
+	<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>
+					<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>FakeStructA</td></tr>
+					<tr><td port='port_main_string' align='left'>publicName</td><td align='left'><font color='#7f8183'>string</font></td></tr>
+
+	</table> >];
+
+	fake_struct_pkg_fakestructb [shape=plaintext label=<
+	<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>
+					<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>FakeStructB</td></tr>
+					<tr><td port='port_fake_struct_pkg_fakestructa' align='left'>otherTypeStruct</td><td align='left'><font color='#7f8183'>*FakeStructA</font></td></tr>
+					<tr><td port='port_fake_struct_pkg_fakestructb' align='left'>sameTypeStruct</td><td align='left'><font color='#7f8183'>*FakeStructB</font></td></tr>
+
+	</table> >];
+	fake_struct_pkg_fakestructb:port_fake_struct_pkg_fakestructa -> fake_struct_pkg_fakestructa;
+	fake_struct_pkg_fakestructb:port_fake_struct_pkg_fakestructb -> fake_struct_pkg_fakestructb;
+}

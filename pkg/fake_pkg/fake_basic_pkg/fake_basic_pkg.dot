@@ -1,0 +1,7 @@
+digraph V {
+	graph [label=< <br/><b>../../pkg/fake_pkg/fake_basic_pkg</b> >, labelloc=b, fontsize=10 fontname=Arial];
+	node [fontname=Arial];
+	edge [fontname=Arial];
+	main_fakestring [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeString</td></tr><tr><td align='center'>string</td></tr></table> >];
+	main_fakeint [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeInt</td></tr><tr><td align='center'>int</td></tr></table> >];
+}
