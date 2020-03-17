@@ -164,7 +164,7 @@ func (dgn *dotGraphNode) Print(out string, pkgName string, indentLevel int, type
 	case "interface":
 		out = fmt.Sprintf("%s%s%v [shape=plaintext label=< "+
 			"<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>"+
-			"<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>%s interface</td></tr>",
+			"<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>%s</td></tr>",
 			out,
 			strings.Repeat("  ", indentLevel),
 			dgn.typeId,
