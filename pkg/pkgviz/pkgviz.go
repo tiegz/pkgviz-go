@@ -164,15 +164,14 @@ func (dgn *dotGraphNode) Print(out string, pkgName string, indentLevel int, type
 	case "interface":
 		out = fmt.Sprintf("%s%s%v [shape=plaintext label=< "+
 			"<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'>"+
-			"<tr><td bgcolor='#e0ebf5' align='center' colspan='%d'>%s interface</td></tr>",
+			"<tr><td bgcolor='#e0ebf5' align='center' colspan='2'>%s interface</td></tr>",
 			out,
 			strings.Repeat("  ", indentLevel),
 			dgn.typeId,
-			len(dgn.typeInterfaceMethods),
 			dgn.typeName,
 		)
 		for methodName, methodType := range dgn.typeInterfaceMethods {
-			out = fmt.Sprintf("%s<tr><td>%s <font color='#d0dae5'>%s</font></td></tr>", out, methodName, methodType)
+			out = fmt.Sprintf("%s<tr><td align='left'>%s</td><td align='left'><font color='#7f8183'>%s</font></td></tr>", out, methodName, methodType)
 		}
 		out = fmt.Sprintf("%s</table>>];\n", out)
 	case "pointer":
@@ -595,7 +594,7 @@ func addStructLinksToGraph(byPkg *dotGraphPkg, obj types.Object, ss *types.Struc
 		// Don't link to basic types or containers of basic types.
 		isSignature := fTypeType == "*types.Signature"
 		isBasic := fTypeType == "*types.Basic"
-		// HACK: better way to do this, e.g. chedcking NumExplicitMethods > 0?
+		// HACK: better way to do this, e.g. checking NumExplicitMethods > 0?
 		isEmptyInterface := fieldId == "time_interfacebraces"
 		isContainerOfBasic := containerElemIsBasic(f.Type())
 
@@ -613,6 +612,13 @@ func addStructLinksToGraph(byPkg *dotGraphPkg, obj types.Object, ss *types.Struc
 func addInterfaceToGraph(dg *dotGraphNode, obj types.Object, i *types.Interface, pkgName string, byPkg *dotGraphPkg) { // indentLevel int) {
 	typeId := getTypeId(obj.Type(), obj.Pkg().Name(), pkgName)
 
+	methods := map[string]string{}
+	if i.NumMethods() > 0 {
+		for idx := 0; idx < i.NumMethods(); idx += 1 {
+			m := i.Method(idx)
+			methods[m.Name()] = m.Type().String()
+		}
+	}
 	node := &dotGraphNode{
 		pkgName:              pkgName,
 		typeId:               typeId,
@@ -620,14 +626,7 @@ func addInterfaceToGraph(dg *dotGraphNode, obj types.Object, i *types.Interface,
 		typeName:             obj.Name(),
 		typeNodes:            map[string]*dotGraphNode{},
 		typeStructFields:     map[string]*dotGraphStructField{},
-		typeInterfaceMethods: map[string]string{},
-	}
-
-	if i.NumExplicitMethods() > 0 {
-		for idx := 0; idx < i.NumExplicitMethods(); idx += 1 {
-			m := i.ExplicitMethod(idx)
-			dg.typeInterfaceMethods[m.Name()] = m.Type().String()
-		}
+		typeInterfaceMethods: methods,
 	}
 
 	dg.typeNodes[typeId] = node
