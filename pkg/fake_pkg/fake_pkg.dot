@@ -1,0 +1,26 @@
+digraph V {
+  graph [label=< <br/><b>../fake_pkg</b> >, labelloc=b, fontsize=10 fontname=Arial];
+  node [fontname=Arial];
+  edge [fontname=Arial];
+  fakefloat [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeFloat</td></tr><tr><td align='center'>float64</td></tr></table> >];
+  fakerune [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeRune</td></tr><tr><td align='center'>rune</td></tr></table> >];
+  fakearrayofarrayofstrings [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeArrayOfArrayOfStrings</td></tr><tr><td>[][]string</td></tr></table> >];
+  fakearrayofstrings [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeArrayOfStrings</td></tr><tr><td>[]string</td></tr></table> >];
+  anotherfakestruct [shape=plaintext label=<<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center' colspan='2'>AnotherFakeStruct</td></tr><tr><td port='port_otherTypeStruct' align='left'>otherTypeStruct</td><td align='left'><font color='#7f8183'>FakeStruct</font></td></tr><tr><td port='port_selfReferentialStruct' align='left'>selfReferentialStruct</td><td align='left'><font color='#7f8183'>AnotherFakeStruct</font></td></tr></table> >];
+  fakeint [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeInt</td></tr><tr><td align='center'>int</td></tr></table> >];
+  fakenestedmap [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeNestedMap</td></tr><tr><td>map[string]map[string]string</td></tr></table> >];
+  fakebyte [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeByte</td></tr><tr><td align='center'>byte</td></tr></table> >];
+  fakestring [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeString</td></tr><tr><td align='center'>string</td></tr></table> >];
+  fakecomplex [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeComplex</td></tr><tr><td align='center'>complex64</td></tr></table> >];
+  fakemap [shape=plaintext label=< <table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center'>FakeMap</td></tr><tr><td>map[string]string</td></tr></table> >];
+  fakestruct [shape=plaintext label=<<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#4BAAD3'><tr><td bgcolor='#e0ebf5' align='center' colspan='2'>FakeStruct</td></tr><tr><td port='port_FakeString' align='left'>FakeString</td><td align='left'><font color='#7f8183'>FakeString</font></td></tr><tr><td port='port_PublicField' align='left'>PublicField</td><td align='left'><font color='#7f8183'>string</font></td></tr><tr><td port='port_privateField' align='left'>privateField</td><td align='left'><font color='#7f8183'>string</font></td></tr><tr><td port='port_someArrayOfStrings' align='left'>someArrayOfStrings</td><td align='left'><font color='#7f8183'>FakeArrayOfStrings</font></td></tr><tr><td port='port_someArrayOfArrayOfStrings' align='left'>someArrayOfArrayOfStrings</td><td align='left'><font color='#7f8183'>FakeArrayOfArrayOfStrings</font></td></tr><tr><td port='port_somePointer' align='left'>somePointer</td><td align='left'><font color='#7f8183'>FakePointerToString</font></td></tr><tr><td port='port_someMap' align='left'>someMap</td><td align='left'><font color='#7f8183'>FakeMap</font></td></tr><tr><td port='port_someNestedMap' align='left'>someNestedMap</td><td align='left'><font color='#7f8183'>FakeNestedMap</font></td></tr></table> >];
+  anotherfakestruct:port_otherTypeStruct -> fakestruct;
+  anotherfakestruct:port_selfReferentialStruct -> anotherfakestruct;
+  fakestruct:port_someArrayOfStrings -> fakearrayofstrings;
+  fakestruct:port_someArrayOfArrayOfStrings -> fakearrayofarrayofstrings;
+  fakestruct:port_somePointer -> fakepointertostring;
+  fakepointertostring [shape=plaintext label=<<table border='2' cellborder='0' cellspacing='0' style='rounded' color='#gray'><tr><td align='center' colspan='2'>.FakePointerToString</td></tr></table> >];
+  fakestruct:port_someMap -> fakemap;
+  fakestruct:port_someNestedMap -> fakenestedmap;
+  fakestruct:port_FakeString -> fakestring;
+}

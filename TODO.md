@@ -5,3 +5,4 @@
 * [ ] or, possible to use reflect instead of go/types
 * [ ] look into string builder lib for building dot, etc?
 * [ ] add errors
+* [ ] can we use CSS to DRY up some of the tables?
