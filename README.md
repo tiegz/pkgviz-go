@@ -25,6 +25,8 @@ Then install the `pkgviz` command:
 
 `pkgviz A_GO_PKGNAME`
 
+The graph image is output to `out.png`.
+
 ### Examples:
 
 `pkgviz github.com/tiegz/pkgviz-go`
