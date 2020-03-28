@@ -19,7 +19,7 @@ Ensure that you have [graphviz](https://www.graphviz.org/) installed:
 
 Then install the `pkgviz` command:
 
-`go install github.com/tiegz/pkgviz-go`
+`go install github.com/tiegz/pkgviz-go/cmd/pkgviz`
 
 ## Usage
 
@@ -31,4 +31,8 @@ The graph image is output to `out.png`.
 
 `pkgviz github.com/tiegz/pkgviz-go`
 
+<img src="https://github.com/tiegz/pkgviz-go/raw/master/out-pkgviz-go.png">
+
 `pkgviz time`
+
+<img src="https://github.com/tiegz/pkgviz-go/raw/master/out-time.png">
