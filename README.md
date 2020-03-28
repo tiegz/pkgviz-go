@@ -2,6 +2,8 @@
 
 Generate a vizualization of a Go package's types.
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/tiegz/pkgviz-go)](https://goreportcard.com/report/github.com/tiegz/pkgviz-go)
+
 ## How does it work
 
 `pkgviz-go` uses Go's [type-checker](https://godoc.org/go/types) to analyse a given go package, builds a graph of the types, writes it to [DOT format](https://en.wikipedia.org/wiki/DOT_%28graph_description_language%29), and generates an image of the graph using [graphviz](https://graphviz.org/).
