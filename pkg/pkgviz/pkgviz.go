@@ -735,7 +735,8 @@ func getTypeId(t types.Type, typePkgName, originalPkgName string) string {
 		typeName = t.String()
 	case *types.Interface:
 		typeName = t.String()
-		typeId = labelizeName(typePkgName, typeName)
+		// TODO: do we need this still for interface?
+		// typeId = labelizeName(typePkgName, typeName)
 	case *types.Pointer:
 		pointerType := namedTypeType.Elem()
 		typeName = pointerType.String()

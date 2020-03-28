@@ -1,7 +1,6 @@
 package nested
 
-// A struct nested in fakepkg.
-type NestedStruct struct {
+type nestedStruct struct {
 	name                  string
 	selfReferentialStruct *NestedStruct
 }
