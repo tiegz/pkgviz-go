@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/tiegz/pkgviz/pkg/pkgviz"
+	"github.com/tiegz/pkgviz-go/pkg/pkgviz"
 )
 
 func main() {

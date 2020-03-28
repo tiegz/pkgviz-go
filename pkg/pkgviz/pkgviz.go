@@ -720,20 +720,14 @@ func containerElemIsBasic(t types.Type) bool {
 }
 
 func getTypeId(t types.Type, typePkgName, originalPkgName string) string {
-	// fmt.Printf("debug getTypeId: %v - %v - %v\n", t, typePkgName, originalPkgName)
 	var typeId, typeName string
 
 	switch namedTypeType := t.Underlying().(type) {
 	case *types.Basic:
-		typePkgName, typeName = "main", t.String()
+		typeName = t.String()
 	case *types.Chan:
-		// containerType := namedTypeType.Elem()
-		// typeName = strings.Join([]string{"chan", containerType.String()}, "_")
 		typeName = t.String()
 	case *types.Slice:
-		// sliceType := namedTypeType.Elem()
-		// fmt.Printf("DEBUG: adding slice %s <%T>, <%T> %s, <%T>\n", t.String(), t, namedTypeType, namedTypeType.String(), namedTypeType)
-		// typeName = strings.Join([]string{"slice", t.String()}, "_")
 		typeName = t.String()
 	case *types.Struct:
 		typeName = t.String()
@@ -744,10 +738,8 @@ func getTypeId(t types.Type, typePkgName, originalPkgName string) string {
 		pointerType := namedTypeType.Elem()
 		typeName = pointerType.String()
 	case *types.Signature:
-		typePkgName, typeName = "main", t.String()
+		typeName = t.String()
 	case *types.Map:
-		// mapType := namedTypeType.Elem()
-		// typeName = strings.Join([]string{"map", mapType.String()}, "_")
 		typeName = t.String()
 	}
 

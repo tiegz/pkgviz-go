@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tiegz/pkgviz/pkg/pkgviz"
+	"github.com/tiegz/pkgviz-go/pkg/pkgviz"
 )
 
 func TestPlaceholder(t *testing.T) {
