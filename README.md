@@ -31,8 +31,8 @@ The graph image is output to `out.png`.
 
 `pkgviz github.com/tiegz/pkgviz-go`
 
-<img src="https://github.com/tiegz/pkgviz-go/raw/master/out-pkgviz-go.png">
+<img width="500px" src="https://github.com/tiegz/pkgviz-go/raw/master/out-pkgviz-go.png">
 
 `pkgviz time`
 
-<img src="https://github.com/tiegz/pkgviz-go/raw/master/out-time.png">
+<img width="500px" src="https://github.com/tiegz/pkgviz-go/raw/master/out-time.png">
