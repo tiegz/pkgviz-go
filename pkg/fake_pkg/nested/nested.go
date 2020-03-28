@@ -1,6 +1,6 @@
 package nested
 
 type NestedStruct struct {
-	name           string
-	externalStruct FakeStruct
+	name                  string
+	selfReferentialStruct *NestedStruct
 }
