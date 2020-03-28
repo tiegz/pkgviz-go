@@ -16,8 +16,8 @@ func TestPlaceholder(t *testing.T) {
 // func TestWriteGraphWithBasicTypes(t *testing.T) {
 // 	assertGraph(
 // 		t,
-// 		"../fake_pkg",
-// 		"../../pkg/fake_pkg/fake_pkg.dot",
+// 		"../fakepkg",
+// 		"../../pkg/fakepkg/fakepkg.dot",
 // 	)
 // }
 

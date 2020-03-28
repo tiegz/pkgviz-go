@@ -131,6 +131,7 @@ func (p *pkg) PrintNodeLinks(out string, typeIdsPrinted map[string]bool) string 
 	return out
 }
 
+// WriteGraph will build the graph based on the given pkgName, and write out the dot graph.
 func WriteGraph(pkgName string) string {
 	typeIdsPrinted := map[string]bool{}
 	pkgGraph := BuildGraph(pkgName)
@@ -248,6 +249,7 @@ func (dgn *graphNode) Print(out string, pkgName string, indentLevel int, typeIds
 	return out, typeIdsPrinted
 }
 
+// BuildGraph builds a graph of types in the given pkgName.
 func BuildGraph(pkgName string) *pkg {
 	root := graphNode{
 		pkgName:              pkgName,
