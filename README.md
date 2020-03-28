@@ -1,6 +1,6 @@
 # pkgviz-go
 
-Visualize the relationships of types in a Go package.
+Generate a vizualization of a Go package's types.
 
 ## How does it work
 
@@ -8,9 +8,11 @@ Visualize the relationships of types in a Go package.
 
 ## Installation
 
-Ensure that you have [graphviz](https://www.graphviz.org/) installed.
+Ensure that you have [graphviz](https://www.graphviz.org/) installed:
 
-MacOS: `brew install graphviz`
+* MacOS: `brew install graphviz`
+* Windows: install the latest package from [here](https://graphviz.gitlab.io/_pages/Download/Download_windows.html)
+* Linux: follow your distribution's instructions [here](https://graphviz.gitlab.io/download/)
 
 Then install the `pkgviz` command:
 
@@ -23,4 +25,5 @@ Then install the `pkgviz` command:
 ### Examples:
 
 `pkgviz github.com/tiegz/pkgviz-go`
+
 `pkgviz time`
