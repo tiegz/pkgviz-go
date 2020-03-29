@@ -106,6 +106,7 @@ func (p *pkg) PrintFooter(out string) string {
 }
 
 func (p *pkg) PrintNodeLinks(out string, typeIdsPrinted map[string]bool) string {
+	out = fmt.Sprintf("%s  /* node links: */\n", out)
 	for _, nodeLink := range p.nodeLinks {
 		toTypeId := labelizeName(nodeLink.toTypePkgName, nodeLink.toTypeName)
 		out = fmt.Sprintf(
@@ -145,6 +146,7 @@ func WriteGraph(pkgName string) string {
 }
 
 func (dgn *graphNode) Print(out string, pkgName string, indentLevel int, typeIdsPrinted map[string]bool) (string, map[string]bool) {
+	out = fmt.Sprintf("%s  /* %s */\n", out, dgn.typeType)
 	switch dgn.typeType {
 	case "root":
 		// no-op?
@@ -191,7 +193,12 @@ func (dgn *graphNode) Print(out string, pkgName string, indentLevel int, typeIds
 			dgn.typeName,
 		)
 		for methodName, methodType := range dgn.typeInterfaceMethods {
-			out = fmt.Sprintf("%s<tr><td align='left'>%s</td><td align='left'><font color='#7f8183'>%s</font></td></tr>", out, methodName, methodType)
+			out = fmt.Sprintf(
+				"%s<tr><td align='left'>%s</td><td align='left'><font color='#7f8183'>%s</font></td></tr>",
+				out,
+				methodName,
+				escapeHtml(methodType),
+			)
 		}
 		out = fmt.Sprintf("%s</table>>];\n", out)
 	case "pointer":
@@ -202,7 +209,7 @@ func (dgn *graphNode) Print(out string, pkgName string, indentLevel int, typeIds
 			dgn.typeId,
 		)
 	case "signature":
-		fmt.Printf(
+		out = fmt.Sprintf(
 			"%s\n%s%v [shape=record, label=\"%s\", color=\"blue\"]\n",
 			out,
 			strings.Repeat("  ", indentLevel),
@@ -620,9 +627,10 @@ func addStructLinksToGraph(p *pkg, obj types.Object, ss *types.Struct, pkgName s
 		isBasic := fTypeType == "*types.Basic"
 		// HACK: better way to do this, e.g. checking NumExplicitMethods > 0?
 		isEmptyInterface := fieldId == "time_interfacebraces"
-		isContainerOfBasic := containerElemIsBasic(f.Type())
+		isContainerOfBuiltinType := isContainerOfBuiltinType(f.Type())
+		// isEmptyStruct := fieldId == "t"
 
-		if !isEmptyInterface && !isSignature && !isBasic && !isContainerOfBasic {
+		if !isEmptyInterface && !isSignature && !isBasic && !isContainerOfBuiltinType {
 			p.nodeLinks = append(p.nodeLinks, graphNodeLink{
 				fromStructTypeId:    structTypeId,
 				fromStructFieldName: f.Name(),
@@ -658,9 +666,17 @@ func addInterfaceToGraph(dg *graphNode, obj types.Object, i *types.Interface, pk
 }
 
 func escapeHtml(s string) string {
-	str := strings.Replace(s, "<", "&lt;", -1)
-	str = strings.Replace(str, ">", "&gt;", -1)
-	return str
+	return strings.Replace(
+		strings.Replace(
+			s,
+			"<",
+			"&lt;",
+			-1,
+		),
+		">",
+		"&gt;",
+		-1,
+	)
 }
 
 func getTypeAssertion(t types.Type) types.Type {
@@ -686,35 +702,47 @@ func getContainerType(t types.Type) types.Type {
 }
 
 // For chans, slices, etc that have an underlying type.
-func containerElemIsBasic(t types.Type) bool {
-	switch typeType := t.(type) {
+func isContainerOfBuiltinType(t types.Type) bool {
+	switch containerType := t.(type) {
 	case *types.Slice:
-		switch typeType.Elem().(type) {
-		case *types.Basic:
-			return true
+		switch containerUnderlyingType := containerType.Elem().(type) {
 		default:
-			return false
+			switch containerUnderlyingType.(type) {
+			case *types.Named:
+				return false
+			default:
+				return true
+			}
 		}
 	case *types.Chan:
-		switch typeType.Elem().(type) {
-		case *types.Basic:
-			return true
+		switch containerUnderlyingType := containerType.Elem().(type) {
 		default:
-			return false
+			switch containerUnderlyingType.(type) {
+			case *types.Named:
+				return false
+			default:
+				return true
+			}
 		}
 	case *types.Array:
-		switch typeType.Elem().(type) {
-		case *types.Basic:
-			return true
+		switch containerUnderlyingType := containerType.Elem().(type) {
 		default:
-			return false
+			switch containerUnderlyingType.(type) {
+			case *types.Named:
+				return false
+			default:
+				return true
+			}
 		}
 	case *types.Map:
-		switch typeType.Elem().(type) {
-		case *types.Basic:
-			return true
+		switch containerUnderlyingType := containerType.Elem().(type) {
 		default:
-			return false
+			switch containerUnderlyingType.(type) {
+			case *types.Named:
+				return false
+			default:
+				return true
+			}
 		}
 	default:
 		return false // not actually a slice
