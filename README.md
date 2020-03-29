@@ -5,7 +5,7 @@
 
 Generate a vizualization of a Go package's types.
 
-**This package is still v0. If you run into bugs, please leave a note in Issues ✍🏻** 
+_This package is still v0. If you run into bugs, please report it in Issues ✍🏻_
 
 ## How does it work
 
