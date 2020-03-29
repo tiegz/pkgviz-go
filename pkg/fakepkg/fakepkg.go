@@ -17,11 +17,11 @@ type fakeMap map[string]string
 type fakeNestedMap map[string]map[string]string
 
 type fakeStruct struct {
-	someArrayOfStrings        FakeArrayOfStrings
-	someArrayOfArrayOfStrings FakeArrayOfArrayOfStrings
-	somePointer               FakePointerToString
-	someMap                   FakeMap
-	someNestedMap             FakeNestedMap
+	someArrayOfStrings        fakeArrayOfStrings
+	someArrayOfArrayOfStrings fakeArrayOfArrayOfStrings
+	somePointer               fakePointerToString
+	someMap                   fakeMap
+	someNestedMap             fakeNestedMap
 
 	fakeString   // implicit field
 	PublicField  string
@@ -29,8 +29,8 @@ type fakeStruct struct {
 }
 
 type anotherFakeStruct struct {
-	otherTypeStruct       *FakeStruct
-	selfReferentialStruct *AnotherFakeStruct
+	otherTypeStruct       *fakeStruct
+	selfReferentialStruct *anotherFakeStruct
 	// TODO fix import
 	// nestedStruct          nested.NestedStruct
 }
