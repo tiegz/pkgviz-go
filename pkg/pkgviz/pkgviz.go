@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -159,7 +160,15 @@ func (dgn *graphNode) Print(out string, pkgName string, indentLevel int, typeIds
 			dgn.typeId,
 			dgn.typeName,
 		)
-		for structFieldName, structFieldNode := range dgn.typeStructFields {
+
+		var alphabetizedKeys []string
+		for k, _ := range dgn.typeStructFields {
+			alphabetizedKeys = append(alphabetizedKeys, k)
+		}
+		sort.Strings(alphabetizedKeys)
+
+		for _, structFieldName := range alphabetizedKeys {
+			structFieldNode := dgn.typeStructFields[structFieldName]
 			out = fmt.Sprintf(
 				"%s<tr><td port='port_%s' align='left'>%s</td><td align='left'><font color='#7f8183'>%s</font></td></tr>",
 				out,
@@ -244,7 +253,7 @@ func (dgn *graphNode) Print(out string, pkgName string, indentLevel int, typeIds
 			"</table> >];\n",
 			out,
 			strings.Repeat("  ", indentLevel),
-			dgn.typeId, // TODO: should this be typeId?
+			dgn.typeId,
 			dgn.typeName,
 			dgn.typeMapType,
 		)
