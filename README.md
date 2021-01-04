@@ -36,3 +36,4 @@ The graph image is output to `out.png`.
 `pkgviz time`
 
 <img width="500px" src="https://github.com/tiegz/pkgviz-go/raw/master/out-time.png">
+
